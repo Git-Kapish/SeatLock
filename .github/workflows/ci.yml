@@ -1,0 +1,127 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-and-typecheck:
+    name: Lint & Typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "0.5.1"
+          enable-cache: true
+
+      - name: Set up Python 3.12
+        run: uv python install 3.12
+
+      - name: Install dependencies
+        run: uv sync --all-groups
+
+      - name: Run Ruff Lint Check
+        run: uv run ruff check .
+
+      - name: Run Ruff Format Check
+        run: uv run ruff format --check .
+
+      - name: Run MyPy Type Check
+        run: |
+          uv run mypy libs/common/ticketrush_common
+          uv run mypy services/auth/app
+          uv run mypy services/events/app
+
+  test:
+    name: Unit & Integration Tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: ticketrush
+          POSTGRES_PASSWORD: ticketrush
+          POSTGRES_DB: ticketrush
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "0.5.1"
+          enable-cache: true
+
+      - name: Set up Python 3.12
+        run: uv python install 3.12
+
+      - name: Install dependencies
+        run: uv sync --all-groups
+
+      - name: Run Common Library Tests
+        run: uv run pytest libs/common/tests
+
+      - name: Run Auth Service Tests
+        run: uv run pytest services/auth/tests
+
+      - name: Run Events Service Tests
+        run: uv run pytest services/events/tests
+
+  build-containers:
+    name: Build Docker Containers
+    runs-on: ubuntu-latest
+    needs: [lint-and-typecheck, test]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Auth Service Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: services/auth/Dockerfile
+          push: false
+          tags: ticketrush-auth:latest
+
+      - name: Build Events Service Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: services/events/Dockerfile
+          push: false
+          tags: ticketrush-events:latest
+
+      - name: Build Gateway Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./gateway
+          file: ./gateway/Dockerfile
+          push: false
+          tags: ticketrush-gateway:latest

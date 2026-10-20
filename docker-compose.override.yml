@@ -1,0 +1,13 @@
+# Local development overrides (volume mounts for hot reload)
+services:
+  auth-service:
+    volumes:
+      - ./services/auth/app:/app/app:ro
+    environment:
+      DEBUG: "true"
+
+  events-service:
+    volumes:
+      - ./services/events/app:/app/app:ro
+    environment:
+      DEBUG: "true"

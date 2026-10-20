@@ -1,0 +1,1 @@
+"""TicketRush Auth Service."""

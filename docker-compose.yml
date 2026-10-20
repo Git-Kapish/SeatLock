@@ -1,0 +1,114 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: ticketrush-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ticketrush
+      POSTGRES_PASSWORD: ticketrush
+      POSTGRES_DB: ticketrush
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./deploy/postgres/init-schemas.sql:/docker-entrypoint-initdb.d/init-schemas.sql:ro
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ticketrush -d ticketrush"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: ticketrush-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  localstack:
+    image: localstack/localstack:3.4
+    container_name: ticketrush-localstack
+    restart: unless-stopped
+    environment:
+      SERVICES: sqs
+      DEFAULT_REGION: us-east-1
+    ports:
+      - "4566:4566"
+
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: ticketrush-mailhog
+    restart: unless-stopped
+    ports:
+      - "1025:1025" # SMTP
+      - "8025:8025" # Web UI
+
+  auth-service:
+    build:
+      context: .
+      dockerfile: services/auth/Dockerfile
+    container_name: ticketrush-auth
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    environment:
+      ENVIRONMENT: development
+      LOG_LEVEL: INFO
+      DATABASE_URL: postgresql+asyncpg://ticketrush:ticketrush@postgres:5432/ticketrush
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET_KEY: development-insecure-secret-key-change-in-production-min-32-chars
+      JWT_ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: 15
+      REFRESH_TOKEN_EXPIRE_DAYS: 7
+      INTERNAL_SERVICE_SECRET: development-internal-service-shared-secret-key
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  events-service:
+    build:
+      context: .
+      dockerfile: services/events/Dockerfile
+    container_name: ticketrush-events
+    restart: unless-stopped
+    ports:
+      - "8002:8002"
+    environment:
+      ENVIRONMENT: development
+      LOG_LEVEL: INFO
+      DATABASE_URL: postgresql+asyncpg://ticketrush:ticketrush@postgres:5432/ticketrush
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET_KEY: development-insecure-secret-key-change-in-production-min-32-chars
+      JWT_ALGORITHM: HS256
+      INTERNAL_SERVICE_SECRET: development-internal-service-shared-secret-key
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  gateway:
+    build:
+      context: ./gateway
+      dockerfile: Dockerfile
+    container_name: ticketrush-gateway
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    depends_on:
+      - auth-service
+      - events-service
+
+volumes:
+  pgdata:
+  redisdata:

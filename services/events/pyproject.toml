@@ -1,0 +1,21 @@
+[project]
+name = "ticketrush-events"
+version = "0.1.0"
+description = "TicketRush Events Catalog Service"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "ticketrush_common",
+    "uvicorn[standard]>=0.30.0",
+    "sqlalchemy[asyncio]>=2.0.30",
+    "greenlet>=3.0.0",
+    "asyncpg>=0.29.0",
+    "alembic>=1.13.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
