@@ -97,6 +97,31 @@ services:
       redis:
         condition: service_healthy
 
+  booking-service:
+    build:
+      context: .
+      dockerfile: services/booking/Dockerfile
+    container_name: ticketrush-booking
+    restart: unless-stopped
+    ports:
+      - "8003:8003"
+    environment:
+      ENVIRONMENT: development
+      LOG_LEVEL: INFO
+      DATABASE_URL: postgresql+asyncpg://ticketrush:ticketrush@postgres:5432/ticketrush
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET_KEY: development-insecure-secret-key-change-in-production-min-32-chars
+      JWT_ALGORITHM: HS256
+      INTERNAL_SERVICE_SECRET: development-internal-service-shared-secret-key
+      EVENTS_SERVICE_URL: http://events-service:8002
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      events-service:
+        condition: service_started
+
   gateway:
     build:
       context: ./gateway
@@ -108,6 +133,7 @@ services:
     depends_on:
       - auth-service
       - events-service
+      - booking-service
 
 volumes:
   pgdata:

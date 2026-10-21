@@ -37,6 +37,7 @@ jobs:
           uv run mypy libs/common/ticketrush_common
           uv run mypy services/auth/app
           uv run mypy services/events/app
+          uv run mypy services/booking/app
 
   test:
     name: Unit & Integration Tests
@@ -91,6 +92,9 @@ jobs:
       - name: Run Events Service Tests
         run: uv run pytest services/events/tests
 
+      - name: Run Booking Service Tests
+        run: uv run pytest services/booking/tests
+
   build-containers:
     name: Build Docker Containers
     runs-on: ubuntu-latest
@@ -117,6 +121,14 @@ jobs:
           file: services/events/Dockerfile
           push: false
           tags: ticketrush-events:latest
+
+      - name: Build Booking Service Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: services/booking/Dockerfile
+          push: false
+          tags: ticketrush-booking:latest
 
       - name: Build Gateway Image
         uses: docker/build-push-action@v5

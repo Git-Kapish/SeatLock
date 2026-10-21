@@ -11,3 +11,9 @@ services:
       - ./services/events/app:/app/app:ro
     environment:
       DEBUG: "true"
+
+  booking-service:
+    volumes:
+      - ./services/booking/app:/app/app:ro
+    environment:
+      DEBUG: "true"
