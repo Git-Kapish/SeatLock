@@ -80,7 +80,11 @@ export default function () {
   const holdRes = http.post(
     `${BASE_URL}/api/v1/booking/holds`,
     holdPayload,
-    { headers: authHeaders, tags: { type: 'hold' } }
+    {
+      headers: authHeaders,
+      tags: { type: 'hold' },
+      responseCallback: http.expectedStatuses(201, 409, 429),
+    }
   );
   holdDuration.add(Date.now() - holdStart);
 
@@ -98,6 +102,7 @@ export default function () {
       {
         headers: Object.assign({}, authHeaders, { 'Idempotency-Key': idempotencyKey }),
         tags: { type: 'booking' },
+        responseCallback: http.expectedStatuses(201, 409, 429),
       }
     );
 
