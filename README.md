@@ -9,6 +9,8 @@ SeatLock models a common distributed-systems problem: many users competing for a
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791.svg)](https://www.postgresql.org/)
 [![Redis](https://img.shields.io/badge/Redis-7-DC382D.svg)](https://redis.io/)
 [![LocalStack SQS](https://img.shields.io/badge/Messaging-LocalStack%20SQS-0052CC.svg)](https://localstack.cloud/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/Git-Kapish/SeatLock/blob/main/LICENSE)
+[![CI](https://github.com/Git-Kapish/SeatLock/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Git-Kapish/SeatLock/actions/workflows/ci.yml)
 
 ## Contents
 
@@ -369,4 +371,8 @@ The payment provider is mocked, and LocalStack is used for local SQS development
 
 ## Author
 
-**Kapish** — [GitHub](https://github.com/Git-Kapish)
+Built by **Kapish**, final-year Electronics and Communication Engineering student at Delhi Technological University (Class of 2027). [GitHub profile](https://github.com/Git-Kapish).
+
+## License
+
+MIT. See [`LICENSE`](https://github.com/Git-Kapish/SeatLock/blob/main/LICENSE).
