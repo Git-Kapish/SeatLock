@@ -22,5 +22,24 @@ class BookingConfig(BaseAppConfig):
         alias="EVENTS_SERVICE_URL",
     )
 
+    # Payments & Webhooks
+    payment_webhook_secret: str = Field(
+        default="development-payment-webhook-secret-min-32-chars",
+        alias="PAYMENT_WEBHOOK_SECRET",
+    )
+
+    # SQS Messaging
+    sqs_endpoint_url: str | None = Field(
+        default="http://localhost:4566",
+        alias="SQS_ENDPOINT_URL",
+    )
+    sqs_queue_url: str = Field(
+        default="http://localhost:4566/000000000000/ticketrush-booking-events",
+        alias="SQS_QUEUE_URL",
+    )
+    aws_region: str = Field(default="us-east-1", alias="AWS_REGION")
+    aws_access_key_id: str | None = Field(default="test", alias="AWS_ACCESS_KEY_ID")
+    aws_secret_access_key: str | None = Field(default="test", alias="AWS_SECRET_ACCESS_KEY")
+
 
 config = BookingConfig()

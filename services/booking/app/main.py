@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 import redis.asyncio as aioredis
 from fastapi import FastAPI
 
-from app.api.routes import health, holds, inventory, seats
+from app.api.routes import bookings, health, holds, inventory, seats, webhooks
 from app.config import config
 from ticketrush_common.logging import setup_logging
 from ticketrush_common.middleware import RequestTracingMiddleware, register_error_handlers
@@ -45,6 +45,8 @@ def create_app() -> FastAPI:
     app.include_router(inventory.router, prefix="/api/v1")
     app.include_router(seats.router, prefix="/api/v1")
     app.include_router(holds.router, prefix="/api/v1")
+    app.include_router(bookings.router, prefix="/api/v1")
+    app.include_router(webhooks.router, prefix="/api/v1")
 
     return app
 

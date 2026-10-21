@@ -1,5 +1,5 @@
 """Routes export for booking service."""
 
-from app.api.routes import health, holds, inventory, seats
+from app.api.routes import bookings, health, holds, inventory, seats, webhooks
 
-__all__ = ["health", "holds", "inventory", "seats"]
+__all__ = ["bookings", "health", "holds", "inventory", "seats", "webhooks"]

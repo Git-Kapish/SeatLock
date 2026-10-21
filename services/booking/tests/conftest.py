@@ -30,10 +30,13 @@ from app.config import config
 from app.main import create_app
 from app.repositories.booking_repository import BookingRepository
 from app.repositories.hold_repository import HoldRepository
+from app.repositories.idempotency_repository import IdempotencyRepository
+from app.repositories.payment_repository import PaymentRepository
 from app.repositories.seat_repository import SeatRepository
 from app.services.hold_service import HoldService
 from app.services.inventory_service import InventoryService
 from ticketrush_common.security import create_access_token
+from ticketrush_common.sqs import SQSClient
 
 
 @pytest.fixture
@@ -49,6 +52,23 @@ def mock_hold_repo() -> AsyncMock:
 @pytest.fixture
 def mock_booking_repo() -> AsyncMock:
     return AsyncMock(spec=BookingRepository)
+
+
+@pytest.fixture
+def mock_payment_repo() -> AsyncMock:
+    return AsyncMock(spec=PaymentRepository)
+
+
+@pytest.fixture
+def mock_idempotency_repo() -> AsyncMock:
+    return AsyncMock(spec=IdempotencyRepository)
+
+
+@pytest.fixture
+def mock_sqs_client() -> AsyncMock:
+    client = AsyncMock(spec=SQSClient)
+    client.publish_event = AsyncMock(return_value="msg-12345")
+    return client
 
 
 @pytest.fixture
@@ -133,21 +153,33 @@ def admin_auth_headers(test_admin_id: uuid.UUID) -> dict[str, str]:
 async def app_client(
     mock_seat_repo: AsyncMock,
     mock_hold_repo: AsyncMock,
+    mock_booking_repo: AsyncMock,
+    mock_payment_repo: AsyncMock,
+    mock_idempotency_repo: AsyncMock,
     mock_redis_client: AsyncMock,
     mock_events_client: AsyncMock,
+    mock_sqs_client: AsyncMock,
 ) -> AsyncGenerator[httpx.AsyncClient, None]:
     from app.api.deps import (
+        get_booking_repository,
         get_events_client,
         get_hold_repository,
+        get_idempotency_repository,
+        get_payment_repository,
         get_redis_client,
         get_seat_repository,
+        get_sqs_client,
     )
 
     app = create_app()
     app.dependency_overrides[get_seat_repository] = lambda: mock_seat_repo
     app.dependency_overrides[get_hold_repository] = lambda: mock_hold_repo
+    app.dependency_overrides[get_booking_repository] = lambda: mock_booking_repo
+    app.dependency_overrides[get_payment_repository] = lambda: mock_payment_repo
+    app.dependency_overrides[get_idempotency_repository] = lambda: mock_idempotency_repo
     app.dependency_overrides[get_redis_client] = lambda: mock_redis_client
     app.dependency_overrides[get_events_client] = lambda: mock_events_client
+    app.dependency_overrides[get_sqs_client] = lambda: mock_sqs_client
     app.state.redis_client = mock_redis_client
 
     async with httpx.AsyncClient(

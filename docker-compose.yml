@@ -114,12 +114,44 @@ services:
       JWT_ALGORITHM: HS256
       INTERNAL_SERVICE_SECRET: development-internal-service-shared-secret-key
       EVENTS_SERVICE_URL: http://events-service:8002
+      SQS_ENDPOINT_URL: http://localstack:4566
+      SQS_QUEUE_URL: http://localstack:4566/000000000000/ticketrush-booking-events
+      PAYMENT_WEBHOOK_SECRET: development-payment-webhook-secret-key-min-32-chars
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
       events-service:
+        condition: service_started
+      localstack:
+        condition: service_started
+
+  worker-notifier:
+    build:
+      context: .
+      dockerfile: workers/notifier/Dockerfile
+    container_name: ticketrush-notifier
+    restart: unless-stopped
+    environment:
+      ENVIRONMENT: development
+      LOG_LEVEL: INFO
+      DATABASE_URL: postgresql+asyncpg://ticketrush:ticketrush@postgres:5432/ticketrush
+      REDIS_URL: redis://redis:6379/0
+      SQS_ENDPOINT_URL: http://localstack:4566
+      SQS_QUEUE_URL: http://localstack:4566/000000000000/ticketrush-booking-events
+      SQS_DLQ_URL: http://localstack:4566/000000000000/ticketrush-booking-events-dlq
+      SMTP_HOST: mailhog
+      SMTP_PORT: 1025
+      SWEEPER_INTERVAL_SECONDS: 30
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      localstack:
+        condition: service_started
+      mailhog:
         condition: service_started
 
   gateway:
