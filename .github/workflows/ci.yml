@@ -15,16 +15,15 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v3
+        uses: astral-sh/setup-uv@v5
         with:
-          version: "0.5.1"
           enable-cache: true
 
       - name: Set up Python 3.12
         run: uv python install 3.12
 
       - name: Install dependencies
-        run: uv sync --all-groups
+        run: uv sync --all-packages
 
       - name: Run Ruff Lint Check
         run: uv run ruff check .
@@ -38,10 +37,17 @@ jobs:
           uv run mypy services/auth/app
           uv run mypy services/events/app
           uv run mypy services/booking/app
+          uv run mypy workers/notifier/app
 
   test:
     name: Unit & Integration Tests
     runs-on: ubuntu-latest
+    env:
+      ENVIRONMENT: testing
+      DATABASE_URL: postgresql+asyncpg://ticketrush:ticketrush@localhost:5432/ticketrush
+      REDIS_URL: redis://localhost:6379/0
+      JWT_SECRET_KEY: test-secret-key-min-32-chars-long-for-ci
+      INTERNAL_SERVICE_SECRET: test-internal-service-secret
     services:
       postgres:
         image: postgres:16-alpine
@@ -72,16 +78,15 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v3
+        uses: astral-sh/setup-uv@v5
         with:
-          version: "0.5.1"
           enable-cache: true
 
       - name: Set up Python 3.12
         run: uv python install 3.12
 
       - name: Install dependencies
-        run: uv sync --all-groups
+        run: uv sync --all-packages
 
       - name: Run Common Library Tests
         run: uv run pytest libs/common/tests
@@ -94,6 +99,9 @@ jobs:
 
       - name: Run Booking Service Tests
         run: uv run pytest services/booking/tests
+
+      - name: Run Worker Notifier Tests
+        run: uv run pytest workers/notifier/tests
 
   build-containers:
     name: Build Docker Containers
@@ -129,6 +137,14 @@ jobs:
           file: services/booking/Dockerfile
           push: false
           tags: ticketrush-booking:latest
+
+      - name: Build Worker Notifier Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: workers/notifier/Dockerfile
+          push: false
+          tags: ticketrush-notifier:latest
 
       - name: Build Gateway Image
         uses: docker/build-push-action@v5

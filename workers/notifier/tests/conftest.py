@@ -1,10 +1,25 @@
+# ruff: noqa: E402
 """Test fixtures and mock utilities for notifier worker."""
 
 from __future__ import annotations
 
+import sys
 import uuid
 from datetime import UTC, datetime
+from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
+
+SERVICE_ROOT = Path(__file__).resolve().parent.parent
+if str(SERVICE_ROOT) not in sys.path:
+    sys.path.insert(0, str(SERVICE_ROOT))
+else:
+    sys.path.remove(str(SERVICE_ROOT))
+    sys.path.insert(0, str(SERVICE_ROOT))
+
+# Unload any previously imported 'app' modules from other services in monorepo
+for mod in list(sys.modules.keys()):
+    if mod == "app" or mod.startswith("app."):
+        del sys.modules[mod]
 
 import pytest
 
