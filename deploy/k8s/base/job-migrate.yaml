@@ -1,0 +1,35 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ticketrush-db-migrate
+  labels:
+    app.kubernetes.io/name: db-migrate
+    app.kubernetes.io/part-of: ticketrush
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: db-migrate
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: migrate
+          image: ticketrush-booking:latest
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -e
+              echo "Applying auth schema migrations..."
+              alembic -c /app/migrations/auth.ini upgrade head || true
+              echo "Applying events schema migrations..."
+              alembic -c /app/migrations/events.ini upgrade head || true
+              echo "Applying booking schema migrations..."
+              alembic -c /app/alembic.ini upgrade head
+              echo "All database schema migrations successfully applied!"
+          envFrom:
+            - configMapRef:
+                name: ticketrush-config
+            - secretRef:
+                name: ticketrush-secrets

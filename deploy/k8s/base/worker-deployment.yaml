@@ -1,0 +1,34 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker-notifier
+  labels:
+    app.kubernetes.io/name: worker-notifier
+    app.kubernetes.io/part-of: ticketrush
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: worker-notifier
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: worker-notifier
+        app.kubernetes.io/part-of: ticketrush
+    spec:
+      containers:
+        - name: worker-notifier
+          image: ticketrush-notifier:latest
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef:
+                name: ticketrush-config
+            - secretRef:
+                name: ticketrush-secrets
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 300m
+              memory: 256Mi

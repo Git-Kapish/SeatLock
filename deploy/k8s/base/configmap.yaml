@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ticketrush-config
+  labels:
+    app.kubernetes.io/part-of: ticketrush
+data:
+  ENVIRONMENT: production
+  LOG_LEVEL: INFO
+  DEBUG: "false"
+  POSTGRES_HOST: postgres-service
+  POSTGRES_PORT: "5432"
+  DATABASE_URL: postgresql+asyncpg://ticketrush:ticketrush@postgres-service:5432/ticketrush
+  REDIS_URL: redis://redis-service:6379/0
+  AUTH_SERVICE_URL: http://auth-service:8001
+  EVENTS_SERVICE_URL: http://events-service:8002
+  BOOKING_SERVICE_URL: http://booking-service:8003
+  SQS_ENDPOINT_URL: http://localstack-service:4566
+  SQS_QUEUE_URL: http://localstack-service:4566/000000000000/ticketrush-booking-events
+  SQS_DLQ_URL: http://localstack-service:4566/000000000000/ticketrush-booking-events-dlq
+  AWS_REGION: us-east-1
+  SMTP_HOST: mailhog-service
+  SMTP_PORT: "1025"
+  SWEEPER_INTERVAL_SECONDS: "30"
+  LOGIN_RATE_LIMIT_MAX: "5"
+  LOGIN_RATE_LIMIT_WINDOW: "60"
