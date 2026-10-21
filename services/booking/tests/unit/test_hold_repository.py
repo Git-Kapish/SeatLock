@@ -29,7 +29,7 @@ async def test_create_hold_repository() -> None:
     assert saved.id == hold.id
     session.add.assert_called_once_with(hold)
     session.add_all.assert_called_once_with([hold_seat])
-    session.flush.assert_called_once()
+    assert session.flush.call_count == 2
 
 
 @pytest.mark.asyncio

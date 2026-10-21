@@ -63,6 +63,15 @@ class SimulatedAtomicRedis:
 
             return [0, "UNKNOWN_SCRIPT"]
 
+    async def get(self, key: str) -> str | None:
+        async with self._lock:
+            return self._store.get(key)
+
+    async def set(self, key: str, value: str, ex: int | None = None) -> bool:
+        async with self._lock:
+            self._store[key] = str(value)
+            return True
+
     async def aclose(self) -> None:
         pass
 
