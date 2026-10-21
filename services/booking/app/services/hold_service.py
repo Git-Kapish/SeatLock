@@ -70,22 +70,15 @@ class HoldService:
                 code="DUPLICATE_SEAT_SELECTION",
             )
 
-        # 2. Enforce max active holds per user (Rule B9)
-        active_holds_count = await self.hold_repo.count_active_holds_for_user(user_id)
-        if active_holds_count >= config.max_active_holds_per_user:
-            raise ConflictError(
-                message=f"User has reached the limit of {config.max_active_holds_per_user} active holds",
-                code="MAX_ACTIVE_HOLDS_REACHED",
-                details={
-                    "active_holds": active_holds_count,
-                    "limit": config.max_active_holds_per_user,
-                },
-            )
+        # 2. Confirm event is on sale (cached in Redis to handle high concurrency)
+        event_cache_key = f"cache:event_status:{request.event_id}"
+        cached_status = await self.redis_client.get(event_cache_key)
+        if cached_status != "on_sale":
+            event_data = await self.events_client.verify_event_on_sale(request.event_id)
+            if event_data.get("status") == "on_sale":
+                await self.redis_client.set(event_cache_key, "on_sale", ex=10)
 
-        # 3. Confirm event is on sale
-        await self.events_client.verify_event_on_sale(request.event_id)
-
-        # 4. Redis atomic all-or-nothing hold
+        # 3. Redis atomic all-or-nothing hold
         redis_keys = [f"hold:{request.event_id}:{s_id}" for s_id in seat_ids]
         lua_res = await self.redis_client.eval(
             ACQUIRE_HOLDS_LUA,
@@ -106,8 +99,26 @@ class HoldService:
                 details={"conflicting_key": conflicting_key},
             )
 
-        # 5. PostgreSQL row-level locking & database transaction
+        # 4. PostgreSQL row-level locking & database transaction
         try:
+            # Enforce max active holds per user (Rule B9) only for the winning hold attempt
+            active_holds_count = await self.hold_repo.count_active_holds_for_user(user_id)
+            if active_holds_count >= config.max_active_holds_per_user:
+                await self.redis_client.eval(
+                    RELEASE_HOLDS_LUA,
+                    len(redis_keys),
+                    *redis_keys,
+                    str(user_id),
+                )
+                raise ConflictError(
+                    message=f"User has reached the limit of {config.max_active_holds_per_user} active holds",
+                    code="MAX_ACTIVE_HOLDS_REACHED",
+                    details={
+                        "active_holds": active_holds_count,
+                        "limit": config.max_active_holds_per_user,
+                    },
+                )
+
             # Deterministic ID sorting eliminates deadlocks under high concurrency
             locked_seats = await self.seat_repo.get_seats_for_update(request.event_id, seat_ids)
 

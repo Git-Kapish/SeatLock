@@ -160,6 +160,8 @@ services:
       dockerfile: Dockerfile
     container_name: ticketrush-gateway
     restart: unless-stopped
+    volumes:
+      - ./gateway/nginx.conf:/etc/nginx/nginx.conf:ro
     ports:
       - "8080:8000"
     depends_on:

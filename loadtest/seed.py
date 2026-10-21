@@ -43,6 +43,8 @@ async def seed() -> None:
         await conn.execute("DELETE FROM booking.holds")
         await conn.execute("DELETE FROM booking.payments")
         await conn.execute("DELETE FROM booking.seats")
+        await conn.execute("DELETE FROM booking.processed_webhooks")
+        await conn.execute("DELETE FROM booking.idempotency_keys")
         await conn.execute(
             "DELETE FROM events.events WHERE title = 'Flash Sale: Championship Arena'"
         )

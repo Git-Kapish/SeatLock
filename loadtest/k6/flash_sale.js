@@ -145,10 +145,11 @@ export default function () {
   } else if (holdRes.status === 429) {
     // Rate limit hit
     rateLimits.add(1);
+    sleep(0.5);
   } else if (holdRes.status >= 500) {
     serverErrors.add(1);
   }
 
   // Small random think time between retry cycles
-  sleep(0.1 + Math.random() * 0.2);
+  sleep(0.2 + Math.random() * 0.3);
 }
