@@ -124,8 +124,12 @@ class RateLimitError(AppError):
         retry_after_seconds: int = 60,
         code: str = "RATE_LIMIT_EXCEEDED",
         details: dict[str, Any] | None = None,
+        limit: int | None = None,
     ) -> None:
         headers = {"Retry-After": str(retry_after_seconds)}
+        if limit is not None:
+            headers["X-RateLimit-Limit"] = str(limit)
+            headers["X-RateLimit-Remaining"] = "0"
         payload_details = {"retry_after_seconds": retry_after_seconds, **(details or {})}
         super().__init__(
             message=message,

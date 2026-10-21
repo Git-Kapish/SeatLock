@@ -6,7 +6,12 @@ import uuid
 
 from fastapi import APIRouter, Depends, Header, Request, Response, status
 
-from app.api.deps import get_booking_service, get_current_user, get_idempotency_service
+from app.api.deps import (
+    get_booking_service,
+    get_current_user,
+    get_idempotency_service,
+    rate_limit_bookings,
+)
 from app.schemas.booking import BookingListResponse, BookingResponse, CreateBookingRequest
 from app.services.booking_service import BookingService
 from app.services.idempotency_service import IdempotencyService
@@ -20,9 +25,11 @@ router = APIRouter(prefix="/booking/bookings", tags=["Bookings"])
     response_model=BookingResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create a booking from an active hold with idempotency protection",
+    dependencies=[Depends(rate_limit_bookings)],
 )
 async def create_booking(
     request: Request,
+    response: Response,
     payload: CreateBookingRequest,
     idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
     current_user: UserClaims = Depends(get_current_user),
@@ -51,6 +58,7 @@ async def create_booking(
                 content=cached_body,
                 status_code=cached_status,
                 media_type="application/json",
+                headers=dict(response.headers),
             )
 
     # 2. Execute domain booking workflow
@@ -71,6 +79,7 @@ async def create_booking(
         content=response_body,
         status_code=status.HTTP_201_CREATED,
         media_type="application/json",
+        headers=dict(response.headers),
     )
 
 

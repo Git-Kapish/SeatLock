@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import random
 from typing import Any, cast
 
 from redis.asyncio.client import Redis
@@ -34,10 +35,11 @@ class EventCache:
         return None
 
     async def set_event(self, event_id: str, data: dict[str, Any]) -> None:
-        """Caches event details with default TTL."""
+        """Caches event details with default TTL plus jitter to prevent stampedes."""
         key = f"{EVENT_DETAIL_KEY_PREFIX}{event_id}"
+        ttl_jitter = self.default_ttl + random.randint(0, 30)
         try:
-            await self.client.setex(key, self.default_ttl, json.dumps(data, default=str))
+            await self.client.setex(key, ttl_jitter, json.dumps(data, default=str))
         except Exception as exc:
             logger.warning("cache_write_error", key=key, error=str(exc))
 
@@ -73,9 +75,11 @@ class EventCache:
         return None
 
     async def set_listing(self, query_hash: str, data: dict[str, Any]) -> None:
-        """Caches event listing response with shorter TTL (60s)."""
+        """Caches event listing response with shorter TTL plus jitter (60s - 75s)."""
         key = f"{EVENT_LIST_KEY_PREFIX}{query_hash}"
+        base_ttl = min(60, self.default_ttl)
+        ttl_jitter = base_ttl + random.randint(0, 15)
         try:
-            await self.client.setex(key, min(60, self.default_ttl), json.dumps(data, default=str))
+            await self.client.setex(key, ttl_jitter, json.dumps(data, default=str))
         except Exception as exc:
             logger.warning("cache_listing_write_error", key=key, error=str(exc))

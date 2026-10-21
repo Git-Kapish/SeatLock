@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import redis.asyncio as aioredis
-from fastapi import Depends, Request
+from fastapi import Depends, Request, Response
 from redis.asyncio.client import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -20,7 +22,9 @@ from app.services.hold_service import HoldService
 from app.services.idempotency_service import IdempotencyService
 from app.services.inventory_service import InventoryService
 from app.services.payment_service import PaymentService
+from ticketrush_common.redis import RedisManager
 from ticketrush_common.security import (
+    UserClaims,
     get_current_user_claims_factory,
     require_role,
 )
@@ -151,3 +155,32 @@ get_current_user = get_current_user_claims_factory(
 )
 
 require_admin = require_role("admin", user_dependency=get_current_user)
+
+
+def check_rate_limit_dependency(max_requests: int, window_seconds: int = 60) -> Any:
+    """FastAPI dependency enforcing Redis token bucket rate limiting per authenticated user."""
+
+    async def rate_limiter(
+        request: Request,
+        response: Response,
+        current_user: UserClaims = Depends(get_current_user),
+    ) -> None:
+        redis_manager: RedisManager | None = getattr(request.app.state, "redis_manager", None)
+        if redis_manager is None:
+            redis_manager = RedisManager(config.redis_url)
+            request.app.state.redis_manager = redis_manager
+
+        rate_key = f"{request.url.path}:{current_user.user_id}"
+        remaining, _ = await redis_manager.check_rate_limit(
+            key_identifier=rate_key,
+            max_requests=max_requests,
+            window_seconds=window_seconds,
+        )
+        response.headers["X-RateLimit-Limit"] = str(max_requests)
+        response.headers["X-RateLimit-Remaining"] = str(remaining)
+
+    return rate_limiter
+
+
+rate_limit_holds = check_rate_limit_dependency(max_requests=10, window_seconds=60)
+rate_limit_bookings = check_rate_limit_dependency(max_requests=5, window_seconds=60)

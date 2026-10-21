@@ -6,7 +6,7 @@ import uuid
 
 from fastapi import APIRouter, Depends, status
 
-from app.api.deps import get_current_user, get_hold_service
+from app.api.deps import get_current_user, get_hold_service, rate_limit_holds
 from app.schemas.hold import CreateHoldRequest, HoldResponse
 from app.services.hold_service import HoldService
 from ticketrush_common.security import UserClaims
@@ -19,6 +19,7 @@ router = APIRouter(prefix="/booking/holds", tags=["Booking Holds"])
     response_model=HoldResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Acquire atomic hold on selected seats",
+    dependencies=[Depends(rate_limit_holds)],
 )
 async def create_hold(
     payload: CreateHoldRequest,

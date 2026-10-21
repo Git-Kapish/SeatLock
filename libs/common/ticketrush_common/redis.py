@@ -27,11 +27,16 @@ if current == 1 then
     redis.call('EXPIRE', key, window)
 end
 
+local ttl = redis.call('TTL', key)
+if ttl < 0 then
+    ttl = window
+    redis.call('EXPIRE', key, window)
+end
+
 if current > limit then
-    local ttl = redis.call('TTL', key)
-    return {0, ttl}
+    return {0, 0, ttl}
 else
-    return {1, limit - current}
+    return {1, limit - current, ttl}
 end
 """
 
@@ -69,29 +74,40 @@ class RedisManager:
         key_identifier: str,
         max_requests: int,
         window_seconds: int,
-    ) -> None:
-        """Enforces a rate limit. Raises RateLimitError with Retry-After if exceeded."""
+    ) -> tuple[int, int]:
+        """Enforces a rate limit. Raises RateLimitError with Retry-After if exceeded.
+
+        Returns (remaining_requests, ttl_seconds).
+        """
         _ = self.get_client()
         rate_key = f"ratelimit:{key_identifier}"
         try:
-            allowed, remaining_or_ttl = await self._rate_limit_script(
+            result = await self._rate_limit_script(
                 keys=[rate_key],
                 args=[max_requests, window_seconds],
             )
+            allowed = result[0]
+            remaining = int(result[1])
+            ttl = max(1, int(result[2]))
+
             if allowed == 0:
-                retry_after = max(1, int(remaining_or_ttl))
                 logger.warning(
                     "rate_limit_exceeded",
                     key=key_identifier,
-                    retry_after=retry_after,
+                    retry_after=ttl,
                 )
                 raise RateLimitError(
                     message=f"Rate limit exceeded. Maximum {max_requests} requests per {window_seconds}s.",
-                    retry_after_seconds=retry_after,
+                    retry_after_seconds=ttl,
+                    limit=max_requests,
                 )
+            return remaining, ttl
+        except RateLimitError:
+            raise
         except aioredis.RedisError as exc:
             # If Redis fails, log warning and fail open for availability
             logger.error("redis_rate_limit_check_error_failing_open", error=str(exc))
+            return max_requests - 1, window_seconds
 
 
 @asynccontextmanager
