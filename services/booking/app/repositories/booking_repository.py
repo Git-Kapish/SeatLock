@@ -25,6 +25,7 @@ class BookingRepository:
     ) -> Booking:
         """Persists a new booking and its associated seats."""
         self.session.add(booking)
+        await self.session.flush()
         self.session.add_all(booking_seats)
         await self.session.flush()
         return booking

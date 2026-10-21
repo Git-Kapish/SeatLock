@@ -22,6 +22,7 @@ class HoldRepository:
     async def create_hold(self, hold: Hold, hold_seats: list[HoldSeat]) -> Hold:
         """Persists a new hold record and its associated seat bindings."""
         self.session.add(hold)
+        await self.session.flush()
         self.session.add_all(hold_seats)
         await self.session.flush()
         return hold
