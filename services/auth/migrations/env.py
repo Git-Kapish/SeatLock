@@ -1,7 +1,16 @@
 """Alembic async environment script for Auth schema."""
 
 import asyncio
+import sys
 from logging.config import fileConfig
+from pathlib import Path
+
+# Prioritize current service directory in sys.path and clear app namespace
+service_dir = str(Path(__file__).resolve().parents[1])
+sys.path.insert(0, service_dir)
+for mod in list(sys.modules.keys()):
+    if mod == "app" or mod.startswith("app."):
+        del sys.modules[mod]
 
 from alembic import context
 from sqlalchemy import text
@@ -39,6 +48,7 @@ async def run_async_migrations() -> None:
 
     async with connectable.connect() as connection:
         await connection.run_sync(do_run_migrations)
+        await connection.commit()
 
     await connectable.dispose()
 

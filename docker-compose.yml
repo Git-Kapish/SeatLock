@@ -24,7 +24,7 @@ services:
     restart: unless-stopped
     command: redis-server --appendonly yes
     ports:
-      - "6379:6379"
+      - "6380:6379"
     volumes:
       - redisdata:/data
     healthcheck:
@@ -161,7 +161,7 @@ services:
     container_name: ticketrush-gateway
     restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "8080:8000"
     depends_on:
       - auth-service
       - events-service

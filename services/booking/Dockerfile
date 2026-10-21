@@ -16,9 +16,10 @@ COPY pyproject.toml .python-version ./
 COPY libs/common ./libs/common
 COPY services/booking ./services/booking
 
-# Install production dependencies into a virtual environment
-RUN uv venv /opt/venv && \
-    uv pip install --no-cache --python /opt/venv/bin/python ./libs/common ./services/booking
+# Build wheel for common and install packages into a virtual environment
+RUN uv build --wheel libs/common --out-dir /dist && \
+    uv venv /opt/venv && \
+    uv pip install --no-cache --python /opt/venv/bin/python --no-sources /dist/*.whl ./services/booking
 
 # ==============================================================================
 # Production runtime image
@@ -38,6 +39,7 @@ RUN groupadd -g 1001 appgroup && \
 
 # Copy virtualenv and application code
 COPY --from=builder /opt/venv /opt/venv
+COPY libs/common/ticketrush_common ./ticketrush_common
 COPY services/booking/app ./app
 COPY services/booking/migrations ./migrations
 COPY services/booking/alembic.ini ./

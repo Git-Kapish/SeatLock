@@ -43,7 +43,9 @@ async def seed() -> None:
         await conn.execute("DELETE FROM booking.holds")
         await conn.execute("DELETE FROM booking.payments")
         await conn.execute("DELETE FROM booking.seats")
-        await conn.execute("DELETE FROM events.events WHERE slug = 'flash-sale-load-test'")
+        await conn.execute(
+            "DELETE FROM events.events WHERE title = 'Flash Sale: Championship Arena'"
+        )
         await conn.execute("DELETE FROM auth.users WHERE email LIKE 'loadtest_%'")
 
         # 1. Create 1,000 pre-authenticated users & JWT tokens
@@ -88,31 +90,27 @@ async def seed() -> None:
             user_rows,
         )
 
-        # 2. Create 1 Event in status 'on_sale'
+        # 2. Create 1 Event in status 'published'
         event_id = uuid.uuid4()
-        event_slug = "flash-sale-load-test"
         starts_at = now + timedelta(days=7)
-        ends_at = starts_at + timedelta(hours=3)
 
         print(f"Creating test event: {event_id}...")
         await conn.execute(
             """
             INSERT INTO events.events (
-                id, title, slug, description, venue_name, venue_city,
-                starts_at, ends_at, status, total_capacity, created_at, updated_at
+                id, title, description, venue, city, category,
+                starts_at, status, created_at, updated_at
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
             """,
             event_id,
             "Flash Sale: Championship Arena",
-            event_slug,
             "High concurrency load testing event with 100 seats and 1,000 users",
             "Metropolis Stadium",
             "Metropolis",
+            "sports",
             starts_at,
-            ends_at,
             "on_sale",
-            100,
             now,
             now,
         )
@@ -131,10 +129,10 @@ async def seed() -> None:
                     (
                         seat_id,
                         event_id,
-                        "General Admission",
                         "Section-1",
                         row,
                         num,
+                        5000,
                         "available",
                         1,
                         now,
@@ -145,7 +143,7 @@ async def seed() -> None:
         await conn.executemany(
             """
             INSERT INTO booking.seats (
-                id, event_id, tier, section, row, seat_number,
+                id, event_id, section, row, number, price_cents,
                 status, version, created_at, updated_at
             )
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
